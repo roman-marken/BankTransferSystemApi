@@ -1,0 +1,93 @@
+@BankTransferSystemApi_HostAddress = http://localhost:5099
+# Запустіть сервер: dotnet run --urls http://localhost:5099
+# (або використайте порт із Properties/launchSettings.json)
+
+### Тест 1 — Отримання списку рахунків (очікується 200 OK, 3 seed-рахунки)
+GET {{BankTransferSystemApi_HostAddress}}/api/accounts
+Accept: application/json
+
+###
+
+### Тест 2 — Створення нового рахунку (очікується 201 Created, згенерований номер UA...)
+POST {{BankTransferSystemApi_HostAddress}}/api/accounts
+Content-Type: application/json
+
+{
+  "ownerName": "Олег Бондаренко",
+  "initialBalance": 1500,
+  "accountType": "Premium"
+}
+
+###
+
+### Тест 3 — Успішний переказ 200 грн з рахунку 1 (Standard) на рахунок 2 (Premium).
+### Комісія Standard: max(1.5% = 3.00; мін. 5.00) = 5.00 грн, списання 205.00 (очікується 201 Created)
+POST {{BankTransferSystemApi_HostAddress}}/api/transfers
+Content-Type: application/json
+
+{
+  "fromAccountId": 1,
+  "toAccountId": 2,
+  "amount": 200
+}
+
+###
+
+### Тест 4 — Спроба переказу без грошей: 100 000 при балансі ~4 795
+### (очікується 422 Unprocessable Entity, транзакція зафіксована зі статусом Failed)
+POST {{BankTransferSystemApi_HostAddress}}/api/transfers
+Content-Type: application/json
+
+{
+  "fromAccountId": 1,
+  "toAccountId": 2,
+  "amount": 100000
+}
+
+###
+
+### Тест 5 — Переказ на неіснуючий рахунок (очікується 404 Not Found)
+POST {{BankTransferSystemApi_HostAddress}}/api/transfers
+Content-Type: application/json
+
+{
+  "fromAccountId": 1,
+  "toAccountId": 9999,
+  "amount": 50
+}
+
+###
+
+### Тест 6 — Переказ самому собі (очікується 400 Bad Request, валідація у сервісі)
+POST {{BankTransferSystemApi_HostAddress}}/api/transfers
+Content-Type: application/json
+
+{
+  "fromAccountId": 1,
+  "toAccountId": 1,
+  "amount": 50
+}
+
+###
+
+### Тест 7 — Історія операцій рахунку 1 (очікується 200 OK: Completed + Failed + Rejected)
+GET {{BankTransferSystemApi_HostAddress}}/api/transfers/account/1
+Accept: application/json
+
+###
+
+### Бонус — баланс рахунку 1 після всіх операцій (5000 − 205 = 4795)
+GET {{BankTransferSystemApi_HostAddress}}/api/accounts/1
+Accept: application/json
+
+###
+
+### Бонус — переказ з Business-рахунку 3 (фіксована комісія 10 грн)
+POST {{BankTransferSystemApi_HostAddress}}/api/transfers
+Content-Type: application/json
+
+{
+  "fromAccountId": 3,
+  "toAccountId": 1,
+  "amount": 1500
+}
